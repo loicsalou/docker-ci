@@ -1,0 +1,92 @@
+version: "3.1"
+
+services:
+        Jenkins:
+                image: jenkins/jenkins:lts
+                container_name: Jenkins
+                networks: 
+                        - sao-ci
+                restart: always
+                volumes:
+                        - "/${hostDir}/data_jenkins:/var/jenkins_home"
+                ports:
+                        - 8080:8080
+                        - 5000:5000
+                        - 50000:50000
+        Gitlab:
+                image: "gitlab/gitlab-ce:latest"
+                restart: always
+                networks: 
+                        - sao-ci
+                container_name: Gitlab
+                hostname: "${yourUrl}"
+                environment:
+                        GITLAB_OMNIBUS_CONFIG: |
+                                external_url 'http://${yourUrl}:9090'
+                                gitlab_rails['gitlab_shell_ssh_port'] = 2224
+                ports:
+                        - "9090:9090"
+                        - "2224:22"
+                volumes:
+                        - "/${hostDir}/gitlab/config:/etc/gitlab"
+                        - "/${hostDir}/gitlab/logs:/var/log/gitlab"
+                        - "/${hostDir}/gitlab/data:/var/opt/gitlab"
+        Nexus:
+                image: sonatype/nexus3
+                container_name: Nexus
+                networks: 
+                        - sao-ci
+                restart: always
+                ports:
+                        - "8081:8081"
+                volumes:
+                        - "/${hostDir}/nexus:/opt/sonartype/nexus"
+        Sonarqube:
+                image: sonarqube:7.4-community
+                container_name: SonarQube
+                networks: 
+                        - sao-ci
+                restart: always
+                ports:
+                        - "9000:9000"
+                environment:
+                        - SONARQUBE_JDBC_USERNAME=sonar
+                        - SONARQUBE_JDBC_PASSWORD=sonar
+                        - jdbc:mysql://sonar_database:3306/sonarqube?useUnicode=true&characterEncoding=utf8&rewriteBatchedStatements=true
+                links:
+                        - sonar_database
+                volumes:
+                        - "/${hostDir}/sonarqube/conf:/opt/sonarqube/conf"
+                        - "/${hostDir}/sonarqube/conf:/opt/sonarqube/logs"
+                        - "/${hostDir}/sonarqube/conf:/opt/sonarqube/extensions"
+                        - "/${hostDir}/sonarqube/data:/opt/sonarqube/data"
+        sonar_database:
+                image: mysql
+                container_name: Sonar_Database
+                networks: 
+                        - sao-ci
+                environment:
+                        - MYSQL_ROOT_PASSWORD=sonar
+                        - MYSQL_DATABASE=sonarqube
+                        - MYSQL_USER=sonar
+                        - MYSQL_PASSWORD=sonar
+                ports:
+                        - "3306:3306"
+                volumes:
+                        - "/${hostDir}/sonar/database:/var/lib/mysql"
+
+        cadvisor:
+                image: google/cadvisor
+                volumes:
+                        - "/:/rootfs:ro"
+                        - "/var/run:/var/run:rw"
+                        - "/sys:/sys:ro"
+                        - "/var/lib/docker/:/var/lib/docker:ro"
+                ports:
+                        - "8090:8080"
+                networks:
+                        - sao-ci
+
+networks:
+        sao-ci:
+                driver: bridge

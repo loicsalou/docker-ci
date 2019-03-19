@@ -1,0 +1,41 @@
+version: "3.1"
+
+networks:
+        sao-ci:
+                driver: bridge
+
+services:
+        Sonarqube:
+                image: sonarqube:7.4-community
+                container_name: SonarQube
+                networks: 
+                        - sao-ci
+                restart: always
+                ports:
+                        - "9000:9000"
+                environment:
+                        - SONARQUBE_JDBC_USERNAME=sonar
+                        - SONARQUBE_JDBC_PASSWORD=sonar
+                        - jdbc:mysql://sonar_database:3306/sonarqube?useUnicode=true&characterEncoding=utf8&rewriteBatchedStatements=true
+                links:
+                        - Sonar_database
+                volumes:
+                        - "/${hostDir}/sonarqube/conf:/opt/sonarqube/conf"
+                        - "/${hostDir}/sonarqube/conf:/opt/sonarqube/logs"
+                        - "/${hostDir}/sonarqube/conf:/opt/sonarqube/extensions"
+                        - "/${hostDir}/sonarqube/data:/opt/sonarqube/data"
+        sonar_database:
+                image: mysql
+                container_name: Sonar_Database
+                networks: 
+                        - sao-ci
+                environment:
+                        - MYSQL_ROOT_PASSWORD=sonar
+                        - MYSQL_DATABASE=sonarqube
+                        - MYSQL_USER=sonar
+                        - MYSQL_PASSWORD=sonar
+                ports:
+                        - "3306:3306"
+                volumes:
+                        - "/${hostDir}/sonar/database:/var/lib/mysql"
+
